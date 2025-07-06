@@ -2,16 +2,16 @@
 let width = 150;
 let height = 150;
 const DRAW_TRAIL = false;
-const size = 15; // size of the square
-const numBoids = 1000;
+const size = 10; // size of the square
+const numBoids = 2000;
 
 const visualRange = 75;
 const centeringFactor = 0.005; // adjust velocity by this %
 const matchingFactor = 0.15; // Adjust by this % of average velocity
 const avoidFactor = 0.10; // Adjust velocity by this %
 
-const minDistance = 15; // The distance to stay away from other boids
-const speedLimit = 5;
+const minDistance = 10; // The distance to stay away from other boids
+const speedLimit = 3;
 
 const speedDamping = 0.98; // reduce speed to 50%
 
