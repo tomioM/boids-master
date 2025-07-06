@@ -2,7 +2,8 @@
 let width = 150;
 let height = 150;
 const DRAW_TRAIL = false;
-const size = 10; // size of the square
+const constraintType = "window" // window, shape, none
+const size = 5; // size of the square
 const numBoids = 2000;
 
 const visualRange = 75;
@@ -11,9 +12,12 @@ const matchingFactor = 0.15; // Adjust by this % of average velocity
 const avoidFactor = 0.10; // Adjust velocity by this %
 
 const minDistance = 10; // The distance to stay away from other boids
-const speedLimit = 3;
+const speedLimit = 15;
+  
+const margin = 100;
 
-const speedDamping = 0.98; // reduce speed to 50%
+
+const speedDamping = 0.97; // reduce speed to 50%
 
 var boids = [];
 
@@ -73,7 +77,6 @@ function sizeCanvas() {
 // Constrain a boid to within the window. If it gets too close to an edge,
 // nudge it back in and reverse its direction.
 function keepWithinBounds(boid) {
-  const margin = 100;
   const turnFactor = 1;
 
   if (boid.x < margin) {
@@ -249,8 +252,12 @@ function animationLoop() {
     avoidOthers(boid);
     matchVelocity(boid);
     limitSpeed(boid);
-    // keepWithinBounds(boid);
-    keepWithinShape(boid, ctx);
+    if (constraintType == "shape") {
+      keepWithinShape(boid, ctx);
+
+    } else if (constraintType == "window") {
+      keepWithinBounds(boid);
+    }
 
 
 
