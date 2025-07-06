@@ -3,21 +3,21 @@ let width = 150;
 let height = 150;
 const DRAW_TRAIL = false;
 const constraintType = "window" // window, shape, none
-const size = 5; // size of the square
-const numBoids = 4000;
+const size = 20; // size of the square
+const numBoids = 2000;
 
-const visualRange = 100;
+const visualRange = 200;
 const centeringFactor = 0.005; // adjust velocity by this %
 const matchingFactor = 0.15; // Adjust by this % of average velocity
-const avoidFactor = 0.15; // Adjust velocity by this %
+const avoidFactor = 0.2; // Adjust velocity by this %
 
-const minDistance = 10; // The distance to stay away from other boids
-const speedLimit = 15;
+const minDistance = 25; // The distance to stay away from other boids
+const speedLimit = 25;
   
 const margin = 100;
 
 
-const speedDamping = 0.98; // stringyness
+const speedDamping = 0.97; // stringyness
 
 var boids = [];
 
