@@ -3,16 +3,16 @@ let width = 150;
 let height = 150;
 const DRAW_TRAIL = false;
 const constraintType = "shape" // window, shape, none
-const size = 50; // size of the square
-const numBoids = 3000;
+const size = 20; // size of the square
+const numBoids = 1000;
 
-const visualRange = 300;
+const visualRange = 150;
 const centeringFactor = 0.005; // adjust velocity by this %
 const matchingFactor = 0.15; // Adjust by this % of average velocity
 const avoidFactor = 0.10; // Adjust velocity by this %
 
-const minDistance = 60; // The distance to stay away from other boids
-const speedLimit = 30;
+const minDistance = 20; // The distance to stay away from other boids
+const speedLimit = 10;
   
 const margin = 1500;
 
@@ -30,6 +30,22 @@ function setupShapePath() {
   const pathData = svgPath.getAttribute("d");
   path2D = new Path2D(pathData);
   // console.log(path2D)
+  const canvas = document.querySelector("canvas");
+  const ctx = canvas.getContext("2d");
+
+  const svg = document.querySelector("svg");
+  const viewBox = svg.viewBox.baseVal;
+  console.log(viewBox)
+
+  const scaleX = canvas.width / viewBox.width;
+  const scaleY = canvas.height / viewBox.height;
+
+  console.log(scaleX)
+
+  ctx.save();
+  ctx.scale(scaleX, scaleY);
+  ctx.stroke(path2D); // or fill(path2D)
+  ctx.restore();
 }
 
 
@@ -96,6 +112,8 @@ function keepWithinBounds(boid) {
 function keepWithinShape(boid, ctx) {
   const turnFactor = -1;
   // console.log(ctx.isPointInPath(path2D, boid.x, boid.y));
+ctx.save();
+ctx.scale(scaleX, scaleY);
 
   if (!ctx.isPointInPath(path2D, boid.x, boid.y)) {
     // Bounce boid by reversing direction slightly
