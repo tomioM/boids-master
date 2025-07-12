@@ -2,24 +2,24 @@
 let width = 150;
 let height = 150;
 const DRAW_TRAIL = false;
-const constraintType = "window" // window, shape, none
-const zoomScale = 1;
+const constraintType = "shape" // window, shape, none
+const zoomScale = 0.25;
 
-const size = 5 / zoomScale; // size of the square
-const numBoids = 2000;
+const size = 15 / zoomScale; // size of the square
+const minDistance = 15 / zoomScale; // The distance to stay away from other boids
+const numBoids = 500;
 
-const visualRange = 75 / zoomScale;
+const visualRange = 40 / zoomScale;
 const centeringFactor = 0.005; // adjust velocity by this %
 const matchingFactor = 0.15; // Adjust by this % of average velocity
 const avoidFactor = 0.10; // Adjust velocity by this %
 
-const minDistance = 10 / zoomScale; // The distance to stay away from other boids
-const speedLimit = 15 / zoomScale;
+const speedLimit = 10;
   
 const margin = 100;
 
 
-const speedDamping = 0.97; // reduce speed to 50%
+const speedDamping = 1; // reduce speed to 50%
 
 var boids = [];
 
