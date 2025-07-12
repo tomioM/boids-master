@@ -2,19 +2,19 @@
 let width = 150;
 let height = 150;
 const DRAW_TRAIL = false;
-const constraintType = "window" // window, shape, none
-const size = 20; // size of the square
-const numBoids = 2000;
+const constraintType = "shape" // window, shape, none
+const size = 50; // size of the square
+const numBoids = 3000;
 
-const visualRange = 200;
+const visualRange = 300;
 const centeringFactor = 0.005; // adjust velocity by this %
 const matchingFactor = 0.15; // Adjust by this % of average velocity
-const avoidFactor = 0.2; // Adjust velocity by this %
+const avoidFactor = 0.10; // Adjust velocity by this %
 
-const minDistance = 25; // The distance to stay away from other boids
-const speedLimit = 25;
+const minDistance = 60; // The distance to stay away from other boids
+const speedLimit = 30;
   
-const margin = 100;
+const margin = 1500;
 
 
 const speedDamping = 0.97; // stringyness
@@ -254,7 +254,6 @@ function animationLoop() {
     limitSpeed(boid);
     if (constraintType == "shape") {
       keepWithinShape(boid, ctx);
-
     } else if (constraintType == "window") {
       keepWithinBounds(boid);
     }
