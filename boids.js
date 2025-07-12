@@ -2,22 +2,26 @@
 let width = 150;
 let height = 150;
 const DRAW_TRAIL = false;
-const constraintType = "shape" // window, shape, none
-const size = 20; // size of the square
-const numBoids = 1000;
+const constraintType = "window" // window, shape, none
+const isSquare = false;
 
-const visualRange = 150;
+const zoomScale = 1;
+
+const size = 10 / zoomScale; // size of the square
+const minDistance = 10 / zoomScale; // The distance to stay away from other boids
+
+const numBoids = 2000;
+
+const visualRange = 75 / zoomScale;
 const centeringFactor = 0.005; // adjust velocity by this %
 const matchingFactor = 0.15; // Adjust by this % of average velocity
 const avoidFactor = 0.10; // Adjust velocity by this %
 
-const minDistance = 20; // The distance to stay away from other boids
-const speedLimit = 10;
+const speedLimit = 3 / zoomScale;
   
-const margin = 1500;
+const margin = 100;
 
-
-const speedDamping = 0.97; // stringyness
+const speedDamping = 0.98; // stringyness
 
 var boids = [];
 
@@ -29,31 +33,15 @@ function setupShapePath() {
   // console.log(svgPath)
   const pathData = svgPath.getAttribute("d");
   path2D = new Path2D(pathData);
-  // console.log(path2D)
-  const canvas = document.querySelector("canvas");
-  const ctx = canvas.getContext("2d");
 
-  const svg = document.querySelector("svg");
-  const viewBox = svg.viewBox.baseVal;
-  console.log(viewBox)
-
-  const scaleX = canvas.width / viewBox.width;
-  const scaleY = canvas.height / viewBox.height;
-
-  console.log(scaleX)
-
-  ctx.save();
-  ctx.scale(scaleX, scaleY);
-  ctx.stroke(path2D); // or fill(path2D)
-  ctx.restore();
 }
 
 
-function initBoids() {
+function initBoids(x, y) {
   for (var i = 0; i < numBoids; i += 1) {
     boids[boids.length] = {
-      x: width/2,
-      y: height/2,
+      x: x,
+      y: y,
       // x: Math.random() * width ,
       // y: Math.random() * height,
       dx: Math.random() * 10 - 5,
@@ -111,21 +99,13 @@ function keepWithinBounds(boid) {
 
 function keepWithinShape(boid, ctx) {
   const turnFactor = -1;
-  // console.log(ctx.isPointInPath(path2D, boid.x, boid.y));
-ctx.save();
-ctx.scale(scaleX, scaleY);
+
 
   if (!ctx.isPointInPath(path2D, boid.x, boid.y)) {
     // Bounce boid by reversing direction slightly
     boid.dx *= turnFactor;
     boid.dy *= turnFactor;
   }
-
-    //   // Nudge it back inside
-  //   while (!ctx.isPointInPath(path2D, boid.x, boid.y)) {
-  //     boid.x += boid.dx * 0.1;
-  //     boid.y += boid.dy * 0.1;
-  //   }
 }
 
 // Find the center of mass of the other boids and adjust velocity slightly to
@@ -208,32 +188,6 @@ function limitSpeed(boid) {
 }
 
 
-
-// function drawBoid(ctx, boid) {
-//   const size = 20; // size of the square
-//   const angle = Math.atan2(boid.dy, boid.dx);
-//   ctx.translate(boid.x, boid.y);
-//   ctx.rotate(angle);
-
-//   ctx.fillStyle = "#558cf4";
-//   ctx.beginPath();
-//   // Draw a square centered at (0,0) after translate
-//   ctx.rect(-size / 2, -size / 2, size, size);
-//   ctx.fill();
-
-//   ctx.setTransform(1, 0, 0, 1, 0, 0);
-
-//   if (DRAW_TRAIL) {
-//     ctx.strokeStyle = "#558cf466";
-//     ctx.beginPath();
-//     ctx.moveTo(boid.history[0][0], boid.history[0][1]);
-//     for (const point of boid.history) {
-//       ctx.lineTo(point[0], point[1]);
-//     }
-//     ctx.stroke();
-//   }
-// }
-
 function drawBoid(ctx, boid) {
   const angle = Math.atan2(boid.dy, boid.dx);
   ctx.translate(boid.x, boid.y);
@@ -242,7 +196,11 @@ function drawBoid(ctx, boid) {
   ctx.fillStyle = "#000000";
   ctx.beginPath();
   // Draw a square centered at (0,0) after translate
-  ctx.rect(-size / 2, -size / 2, size, size);
+  if (isSquare) {
+    ctx.rect(-size / 2, -size / 2, size, size);
+  } else {
+    ctx.arc(0, 0, size / 2, 0, Math.PI * 2);
+  }
   ctx.fill();
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -309,7 +267,11 @@ window.onload = () => {
   setupShapePath();
 
   // Randomly distribute the boids to start
-  initBoids();
+  document.addEventListener('click', function(event) {
+  const x = event.clientX; // x coordinate of the mouse click
+  const y = event.clientY; // y coordinate of the mouse click
+  initBoids(x, y);
+});
 
   // Schedule the main animation loop
   window.requestAnimationFrame(animationLoop);
