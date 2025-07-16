@@ -287,6 +287,12 @@ function animationLoop() {
   window.requestAnimationFrame(animationLoop);
 }
 
+  document.addEventListener('click', function(event) {
+    const x = event.clientX; // x coordinate of the mouse click
+    const y = event.clientY; // y coordinate of the mouse click
+    initBoids(x, y);
+  });
+
 window.onload = () => {
   // Make sure the canvas always fills the whole window
   window.addEventListener("resize", sizeCanvas, false);
@@ -294,13 +300,10 @@ window.onload = () => {
 
   setupShapePath();
 
-  // Randomly distribute the boids to start
-  document.addEventListener('click', function(event) {
-    const x = event.clientX; // x coordinate of the mouse click
-    const y = event.clientY; // y coordinate of the mouse click
-    initBoids(x, y);
-  });
 
   // Schedule the main animation loop
   window.requestAnimationFrame(animationLoop);
 };
+
+
+
