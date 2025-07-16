@@ -2,22 +2,24 @@
 let width = 150;
 let height = 150;
 const DRAW_TRAIL = false;
-const constraintType = "shape" // window, shape, none
+const constraintType = "window" // window, shape, none
 let isMetaballRender = false;
+let svgExportQueued = false;
 const zoomScale = 0.25;
+const margin = 100;
 
-const size = 40 / zoomScale; // size of the square
-const minDistance = 30 / zoomScale; // The distance to stay away from other boids
-const numBoids = 20;
 
-const visualRange = 70 / zoomScale;
+const size = 20 / zoomScale; // size of the square
+const minDistance = 20 / zoomScale; // The distance to stay away from other boids
+const numBoids = 50;
+const speedLimit = 15;
+
+const visualRange = 100 / zoomScale;
 const centeringFactor = 0.005; // adjust velocity by this %
 const matchingFactor = 0.15; // Adjust by this % of average velocity
 const avoidFactor = 0.10; // Adjust velocity by this %
 
-const speedLimit = 10;
   
-const margin = 100;
 
 
 const speedDamping = 1; // reduce speed to 50%
@@ -25,19 +27,25 @@ const speedDamping = 1; // reduce speed to 50%
 var boids = [];
 
 // METABALL STUFF
-let circles = [
-  { x: 270, y: 300, r: 80 },
-  { x: 500, y: 300, r: 80 },
-];
-const gridSize = 10;
+const gridSize = 5;
 const threshold = 50;
-let cols, rows, fieldValues;
 
+
+
+let cols, rows, fieldValues;
 let path2D;
 
 document.addEventListener("keydown", function(event) {
   if (event.key === "m" || event.key === "M") {
     isMetaballRender = !isMetaballRender;
+  }
+});
+
+// Listen for keypress 'S'
+window.addEventListener("keydown", (e) => {
+  if (e.key.toLowerCase() === "s") {
+
+    exportToSVG();
   }
 });
 
@@ -93,18 +101,11 @@ function resizeCanvas() {
   canvas.width = window.innerWidth;
   canvas.height = height;
 
-  // Reposition circles based on new size (optional; here we center them)
-  // circles = [
-  //   { x: canvas.width / 2 - 150, y: canvas.height / 2, r: 80 },
-  //   { x: canvas.width / 2 - 150, y: canvas.height / 1.9, r: 80 },
-  //   { x: canvas.width / 2 + 60, y: canvas.height / 2, r: 80 },
-  // ];
-
   cols = Math.floor(canvas.width / gridSize);
   rows = Math.floor(canvas.height / gridSize);
 
-  console.log(boids)
-  computeField(circles);
+  // console.log(boids)
+  // computeField(circles);
 
   // marchingSquares();
 }
