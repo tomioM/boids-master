@@ -5,7 +5,7 @@ const DRAW_TRAIL = false;
 const constraintType = "window" // window, shape, none
 let isMetaballRender = false;
 let svgExportQueued = false;
-const zoomScale = 0.25;
+const zoomScale = 1;
 const margin = 100;
 
 
@@ -27,7 +27,7 @@ const speedDamping = 1; // reduce speed to 50%
 var boids = [];
 
 // METABALL STUFF
-const gridSize = 5;
+const gridSize = 3;
 const threshold = 50;
 
 
@@ -42,10 +42,10 @@ document.addEventListener("keydown", function(event) {
 });
 
 // Listen for keypress 'S'
-window.addEventListener("keydown", (e) => {
+document.addEventListener("keydown", (e) => {
   if (e.key.toLowerCase() === "s") {
-
-    exportToSVG();
+    console.log("djd")
+    svgExportQueued = true;
   }
 });
 
@@ -499,6 +499,54 @@ function marchingSquares() {
   }
 
   ctx.fill("evenodd");
+
+  if (svgExportQueued) {
+    console.log("calling method")
+    exportMetaSVG(polygons)
+  }
+}
+
+function exportMetaSVG(polygons) {
+  console.log("attempt export")
+  svgExportQueued = false;
+
+  const xmlns = "http://www.w3.org/2000/svg";
+  const svgElem = document.createElementNS(xmlns, "svg");
+  svgElem.setAttribute("xmlns", xmlns);
+  svgElem.setAttribute("width", width);
+  svgElem.setAttribute("height", height);
+  svgElem.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svgElem.setAttribute("fill-rule", "evenodd");
+
+  const path = document.createElementNS(xmlns, "path");
+  path.setAttribute("fill", "#000");
+
+  // Create SVG path string
+  let d = "";
+  for (const poly of polygons) {
+    if (poly.length < 3) continue;
+    d += `M ${poly[0].x} ${poly[0].y} `;
+    for (let i = 1; i < poly.length; i++) {
+      d += `L ${poly[i].x} ${poly[i].y} `;
+    }
+    d += "Z ";
+  }
+
+  path.setAttribute("d", d.trim());
+  svgElem.appendChild(path);
+
+  const serializer = new XMLSerializer();
+  const svgString = serializer.serializeToString(svgElem);
+  const blob = new Blob([svgString], { type: "image/svg+xml" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "metaballs.svg";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 // Initial draw
