@@ -3,14 +3,14 @@ let width = 150;
 let height = 150;
 const DRAW_TRAIL = false;
 const constraintType = "shape" // window, shape, none
-const isMetaballRender = false;
+let isMetaballRender = false;
 const zoomScale = 0.25;
 
-const size = 20 / zoomScale; // size of the square
-const minDistance = 20 / zoomScale; // The distance to stay away from other boids
+const size = 40 / zoomScale; // size of the square
+const minDistance = 30 / zoomScale; // The distance to stay away from other boids
 const numBoids = 20;
 
-const visualRange = 100 / zoomScale;
+const visualRange = 70 / zoomScale;
 const centeringFactor = 0.005; // adjust velocity by this %
 const matchingFactor = 0.15; // Adjust by this % of average velocity
 const avoidFactor = 0.10; // Adjust velocity by this %
@@ -29,11 +29,18 @@ let circles = [
   { x: 270, y: 300, r: 80 },
   { x: 500, y: 300, r: 80 },
 ];
-const gridSize = 5;
-const threshold = 20;
+const gridSize = 10;
+const threshold = 50;
 let cols, rows, fieldValues;
 
 let path2D;
+
+document.addEventListener("keydown", function(event) {
+  if (event.key === "m" || event.key === "M") {
+    isMetaballRender = !isMetaballRender;
+  }
+});
+
 
 function setupShapePath() {
   const svgPath = document.getElementById("boidPath");
@@ -49,7 +56,7 @@ function initBoids(x, y) {
     boids[boids.length] = {
       x: x,
       y: y,
-      r: size,
+      r: size * 2,
       // x: Math.random() * width ,
       // y: Math.random() * height,
       dx: Math.random() * 10 - 5,
@@ -490,7 +497,7 @@ function marchingSquares() {
     ctx.closePath();
   }
 
-  ctx.fill();
+  ctx.fill("evenodd");
 }
 
 // Initial draw
