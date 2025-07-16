@@ -1,34 +1,36 @@
 // Size of canvas. These get updated to fill the whole browser.
 let width = 150;
 let height = 150;
-const DRAW_TRAIL = false;
-const constraintType = "window" // window, shape, none
+const DRAW_TRAIL = true;
+const tailColour = "#f8247566"
+const tailWidth = 2;
+const constraintType = "shape" // window, shape, none
 let isMetaballRender = false;
 let svgExportQueued = false;
-const zoomScale = 1;
+const zoomScale = 0.25;
 const margin = 100;
 
 
-const size = 20 / zoomScale; // size of the square
-const minDistance = 20 / zoomScale; // The distance to stay away from other boids
-const numBoids = 50;
-const speedLimit = 15;
+const size = 10 / zoomScale; // size of the square
+const minDistance = 12 / zoomScale; // The distance to stay away from other boids
+const numBoids = 500;
+const speedLimit = 10;
 
-const visualRange = 100 / zoomScale;
+const visualRange = 50 / zoomScale;
 const centeringFactor = 0.005; // adjust velocity by this %
 const matchingFactor = 0.15; // Adjust by this % of average velocity
 const avoidFactor = 0.10; // Adjust velocity by this %
 
-  
+// METABALL STUFF
+const gridSize = 2;
+const threshold = 40;
 
 
 const speedDamping = 1; // reduce speed to 50%
 
 var boids = [];
 
-// METABALL STUFF
-const gridSize = 3;
-const threshold = 50;
+
 
 
 
@@ -268,7 +270,8 @@ function drawBoid(ctx, boid) {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
 
   if (DRAW_TRAIL) {
-    ctx.strokeStyle = "#558cf466";
+    ctx.strokeStyle = tailColour;
+    ctx.lineWidth = tailWidth;
     ctx.beginPath();
     ctx.moveTo(boid.history[0][0], boid.history[0][1]);
     for (const point of boid.history) {
@@ -278,6 +281,57 @@ function drawBoid(ctx, boid) {
   }
 }
 
+
+function exportBoidsToSVG(boids) {
+  svgExportQueued = false;
+  const xmlns = "http://www.w3.org/2000/svg";
+  const svgElem = document.createElementNS(xmlns, "svg");
+  svgElem.setAttribute("xmlns", xmlns);
+  svgElem.setAttribute("width", width);
+  svgElem.setAttribute("height", height);
+  svgElem.setAttribute("viewBox", `0 0 ${width} ${height}`);
+
+  // Draw each boid
+  for (const boid of boids) {
+    const angle = Math.atan2(boid.dy, boid.dx);
+    const cx = boid.x;
+    const cy = boid.y;
+
+    // Create a circle (you can swap this with polygon if needed)
+    const circle = document.createElementNS(xmlns, "circle");
+    circle.setAttribute("cx", cx);
+    circle.setAttribute("cy", cy);
+    circle.setAttribute("r", size / 2);
+    circle.setAttribute("fill", "#000000");
+    circle.setAttribute("transform", `rotate(${(angle * 180) / Math.PI} ${cx} ${cy})`);
+    svgElem.appendChild(circle);
+
+    // Draw the trail if enabled
+    if (DRAW_TRAIL && boid.history.length > 1) {
+      const polyline = document.createElementNS(xmlns, "polyline");
+      const points = boid.history.map(p => `${p[0]},${p[1]}`).join(" ");
+      polyline.setAttribute("points", points);
+      polyline.setAttribute("stroke", tailColour);
+      polyline.setAttribute("fill", "none");
+      polyline.setAttribute("stroke-width", tailWidth);
+      svgElem.appendChild(polyline);
+    }
+  }
+
+  // Serialize and download the SVG
+  const serializer = new XMLSerializer();
+  const svgString = serializer.serializeToString(svgElem);
+  const blob = new Blob([svgString], { type: "image/svg+xml" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "boids.svg";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
 // Main animation loop
 function animationLoop() {
@@ -318,10 +372,13 @@ function animationLoop() {
     marchingSquares()
   } else {
     ctx.clearRect(0, 0, width, height);
-    for (let boid of boids) {
-      drawBoid(ctx, boid);
+    if (svgExportQueued) {
+      exportBoidsToSVG(boids);
+    } else {
+      for (let boid of boids) {
+        drawBoid(ctx, boid);
+      }
     }
-
   }
 
 
