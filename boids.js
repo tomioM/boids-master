@@ -3,13 +3,14 @@ let width = 150;
 let height = 150;
 const DRAW_TRAIL = false;
 const constraintType = "shape" // window, shape, none
+const isMetaballRender = false;
 const zoomScale = 0.25;
 
-const size = 15 / zoomScale; // size of the square
-const minDistance = 15 / zoomScale; // The distance to stay away from other boids
-const numBoids = 500;
+const size = 20 / zoomScale; // size of the square
+const minDistance = 20 / zoomScale; // The distance to stay away from other boids
+const numBoids = 20;
 
-const visualRange = 40 / zoomScale;
+const visualRange = 100 / zoomScale;
 const centeringFactor = 0.005; // adjust velocity by this %
 const matchingFactor = 0.15; // Adjust by this % of average velocity
 const avoidFactor = 0.10; // Adjust velocity by this %
@@ -23,6 +24,14 @@ const speedDamping = 1; // reduce speed to 50%
 
 var boids = [];
 
+// METABALL STUFF
+let circles = [
+  { x: 270, y: 300, r: 80 },
+  { x: 500, y: 300, r: 80 },
+];
+const gridSize = 5;
+const threshold = 20;
+let cols, rows, fieldValues;
 
 let path2D;
 
@@ -40,6 +49,7 @@ function initBoids(x, y) {
     boids[boids.length] = {
       x: x,
       y: y,
+      r: size,
       // x: Math.random() * width ,
       // y: Math.random() * height,
       dx: Math.random() * 10 - 5,
@@ -66,15 +76,32 @@ function nClosestBoids(boid, n) {
   return sorted.slice(1, n + 1);
 }
 
-// Called initially and whenever the window resizes to update the canvas
-// size and width/height variables.
-function sizeCanvas() {
+
+// Resize canvas and update all geometry
+function resizeCanvas() {
+  console.log(width)
   const canvas = document.getElementById("boids");
   width = window.innerWidth;
   height = window.innerHeight;
-  canvas.width = width;
+  canvas.width = window.innerWidth;
   canvas.height = height;
+
+  // Reposition circles based on new size (optional; here we center them)
+  // circles = [
+  //   { x: canvas.width / 2 - 150, y: canvas.height / 2, r: 80 },
+  //   { x: canvas.width / 2 - 150, y: canvas.height / 1.9, r: 80 },
+  //   { x: canvas.width / 2 + 60, y: canvas.height / 2, r: 80 },
+  // ];
+
+  cols = Math.floor(canvas.width / gridSize);
+  rows = Math.floor(canvas.height / gridSize);
+
+  console.log(boids)
+  computeField(circles);
+
+  // marchingSquares();
 }
+
 
 // Constrain a boid to within the window. If it gets too close to an edge,
 // nudge it back in and reverse its direction.
@@ -278,10 +305,17 @@ function animationLoop() {
 
   // Clear the canvas and redraw all the boids in their current positions
   // const ctx = document.getElementById("boids").getContext("2d");
-  ctx.clearRect(0, 0, width, height);
-  for (let boid of boids) {
-    drawBoid(ctx, boid);
+  if (isMetaballRender) {
+    computeField(boids);
+    marchingSquares()
+  } else {
+    ctx.clearRect(0, 0, width, height);
+    for (let boid of boids) {
+      drawBoid(ctx, boid);
+    }
+
   }
+
 
   // Schedule the next frame
   window.requestAnimationFrame(animationLoop);
@@ -295,11 +329,10 @@ function animationLoop() {
 
 window.onload = () => {
   // Make sure the canvas always fills the whole window
-  window.addEventListener("resize", sizeCanvas, false);
-  sizeCanvas();
+  window.addEventListener("resize", resizeCanvas, false);
+  resizeCanvas();
 
   setupShapePath();
-
 
   // Schedule the main animation loop
   window.requestAnimationFrame(animationLoop);
@@ -307,3 +340,159 @@ window.onload = () => {
 
 
 
+
+
+
+// const canvas = document.getElementById("canvas");
+// const ctx = canvas.getContext("2d");
+
+
+
+function computeField(boids) {
+  fieldValues = new Array((cols + 1) * (rows + 1));
+  for (let y = 0; y <= rows; y++) {
+    for (let x = 0; x <= cols; x++) {
+      const px = x * gridSize;
+      const py = y * gridSize;
+      let sum = 0;
+      for (const b of boids) {
+        const dx = px - b.x;
+        const dy = py - b.y;
+        const d2 = dx * dx + dy * dy + 0.0001;
+        sum += (b.r * b.r) / d2;
+      }
+      fieldValues[y * (cols + 1) + x] = sum;
+    }
+  }
+}
+
+const edgeTable = {
+  1: [[3, 0]], 2: [[0, 1]], 3: [[3, 1]],
+  4: [[1, 2]], 5: [[3, 0], [1, 2]], 6: [[0, 2]],
+  7: [[3, 2]], 8: [[2, 3]], 9: [[0, 2]],
+  10: [[0, 1], [2, 3]], 11: [[1, 2]],
+  12: [[1, 3]], 13: [[0, 1]], 14: [[3, 0]]
+};
+
+function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
+
+function interp(p1, p2, v1, v2) {
+  const t = (threshold - v1) / (v2 - v1 + 0.00001);
+  return {
+    x: lerp(p1.x, p2.x, t),
+    y: lerp(p1.y, p2.y, t),
+  };
+}
+
+function getField(x, y) {
+  return fieldValues[y * (cols + 1) + x];
+}
+
+function getPoint(x, y) {
+  return { x: x * gridSize, y: y * gridSize };
+}
+
+function pointsClose(p1, p2) {
+  const dx = p1.x - p2.x;
+  const dy = p1.y - p2.y;
+  return dx * dx + dy * dy < 1;
+}
+
+function marchingSquares() {
+  const ctx = document.getElementById("boids").getContext("2d");
+  ctx.clearRect(0, 0, width, height);
+  ctx.fillStyle = "#000";
+  ctx.beginPath();
+
+  const segments = [];
+
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      const squareCorners = [
+        { p: getPoint(x, y), v: getField(x, y) },
+        { p: getPoint(x + 1, y), v: getField(x + 1, y) },
+        { p: getPoint(x + 1, y + 1), v: getField(x + 1, y + 1) },
+        { p: getPoint(x, y + 1), v: getField(x, y + 1) },
+      ];
+
+      let caseIndex = 0;
+      if (squareCorners[0].v > threshold) caseIndex |= 1;
+      if (squareCorners[1].v > threshold) caseIndex |= 2;
+      if (squareCorners[2].v > threshold) caseIndex |= 4;
+      if (squareCorners[3].v > threshold) caseIndex |= 8;
+
+      if (caseIndex === 0 || caseIndex === 15) continue;
+
+      const edges = edgeTable[caseIndex];
+      if (!edges) continue;
+
+      for (const edge of edges) {
+        const a = edge[0], b = edge[1];
+        const edgePoints = [
+          [squareCorners[0], squareCorners[1]],
+          [squareCorners[1], squareCorners[2]],
+          [squareCorners[2], squareCorners[3]],
+          [squareCorners[3], squareCorners[0]],
+        ];
+
+        const p1 = interp(edgePoints[a][0].p, edgePoints[a][1].p, edgePoints[a][0].v, edgePoints[a][1].v);
+        const p2 = interp(edgePoints[b][0].p, edgePoints[b][1].p, edgePoints[b][0].v, edgePoints[b][1].v);
+        segments.push([p1, p2]);
+      }
+    }
+  }
+
+  const polygons = [];
+  while (segments.length > 0) {
+    let polygon = [];
+    let seg = segments.pop();
+    polygon.push(seg[0], seg[1]);
+
+    let extended = true;
+    while (extended) {
+      extended = false;
+      for (let i = 0; i < segments.length; i++) {
+        const s = segments[i];
+        if (pointsClose(polygon[polygon.length - 1], s[0])) {
+          polygon.push(s[1]);
+          segments.splice(i, 1);
+          extended = true;
+          break;
+        } else if (pointsClose(polygon[polygon.length - 1], s[1])) {
+          polygon.push(s[0]);
+          segments.splice(i, 1);
+          extended = true;
+          break;
+        } else if (pointsClose(polygon[0], s[1])) {
+          polygon.unshift(s[0]);
+          segments.splice(i, 1);
+          extended = true;
+          break;
+        } else if (pointsClose(polygon[0], s[0])) {
+          polygon.unshift(s[1]);
+          segments.splice(i, 1);
+          extended = true;
+          break;
+        }
+      }
+    }
+    polygons.push(polygon);
+  }
+
+  for (const poly of polygons) {
+    if (poly.length < 3) continue;
+    ctx.moveTo(poly[0].x, poly[0].y);
+    for (let i = 1; i < poly.length; i++) {
+      ctx.lineTo(poly[i].x, poly[i].y);
+    }
+    ctx.closePath();
+  }
+
+  ctx.fill();
+}
+
+// Initial draw
+resizeCanvas();
+window.addEventListener("resize", resizeCanvas);
