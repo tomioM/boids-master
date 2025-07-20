@@ -1,39 +1,43 @@
 // Size of canvas. These get updated to fill the whole browser.
 let width = 150;
 let height = 150;
-const DRAW_TRAIL = true;
-const tailColour = "#f8247566"
-const tailWidth = 2;
-const constraintType = "shape" // window, shape, none
 let isMetaballRender = false;
 let svgExportQueued = false;
-const zoomScale = 0.25;
-const margin = 100;
+// const zoomScale = 1;
+const margin = 150;
+
+// MUTABLE VARIABLES
+let constraintType = "shape" // window, shape, none
+
+// Tail
+let drawTail = true;
+let tailColour = "#000000"
+let tailWidth = 0.5;
+
+// Size and Quanitity
+let size = 10; // size of the square
+let minDistance = 10; // The distance to stay away from other boids
+let numBoids = 50; // Per click
+
+// Flocking Behavioiur
+let visualRange = 75;
+let centeringFactor = 0.005; // adjust velocity by this %
+let matchingFactor = 0.15; // Adjust by this % of average velocity
+let avoidFactor = 0.10; // Adjust velocity by this %
+let speedLimit = 10;
 
 
-const size = 10 / zoomScale; // size of the square
-const minDistance = 12 / zoomScale; // The distance to stay away from other boids
-const numBoids = 500;
-const speedLimit = 10;
-
-const visualRange = 50 / zoomScale;
-const centeringFactor = 0.005; // adjust velocity by this %
-const matchingFactor = 0.15; // Adjust by this % of average velocity
-const avoidFactor = 0.10; // Adjust velocity by this %
-
-// METABALL STUFF
-const gridSize = 2;
-const threshold = 40;
+// Metaball
+let gridSize = 5;
+let threshold = 15;
 
 
-const speedDamping = 1; // reduce speed to 50%
+
+const historyLength = -5000;
+const speedDamping = 0.98; // reduce speed to 50%
+
 
 var boids = [];
-
-
-
-
-
 let cols, rows, fieldValues;
 let path2D;
 
@@ -132,21 +136,50 @@ function keepWithinBounds(boid) {
   }
 }
 
-function keepWithinShape(boid, ctx) {
+function keepWithinShape(boid, ctx, boidCache) {
   const turnFactor = -1;
-  // console.log(ctx.isPointInPath(path2D, boid.x, boid.y));
 
   if (!ctx.isPointInPath(path2D, boid.x, boid.y)) {
+    console.log(boidCache)
     // Bounce boid by reversing direction slightly
     boid.dx *= turnFactor;
     boid.dy *= turnFactor;
+
+        // Nudge back inside
+    boid.x = boidCache.x;
+    boid.y = boidCache.y;
+
+    let tries = 0;
+    const maxTries = 50;
+
+    // Nudge it back inside
+    while (!ctx.isPointInPath(path2D, boid.x, boid.y) && tries < maxTries) {
+      boid.x += boid.dx * 0.1;
+      boid.y += boid.dy * 0.1;
+      tries++;
+    }
+
+
+    if (!ctx.isPointInPath(path2D, boid.x, boid.y)) {
+      boid.x = 0;
+      boid.y = 0;
+      boid.dx = 0;
+      boid.dy = 0;
+    }
+
   }
 
-    //   // Nudge it back inside
-  //   while (!ctx.isPointInPath(path2D, boid.x, boid.y)) {
-  //     boid.x += boid.dx * 0.1;
-  //     boid.y += boid.dy * 0.1;
-  //   }
+  // if (!ctx.isPointInPath(path2D, boid.x, boid.y)) {
+  //   // Bounce boid by reversing direction slightly
+  //   boid.dx *= turnFactor;
+  //   boid.dy *= turnFactor;
+
+  //       // Nudge back inside
+  //   boid.x += boid.dx;
+  //   boid.y += boid.dy;
+  // }
+
+
 }
 
 // Find the center of mass of the other boids and adjust velocity slightly to
@@ -230,31 +263,6 @@ function limitSpeed(boid) {
 
 
 
-// function drawBoid(ctx, boid) {
-//   const size = 20; // size of the square
-//   const angle = Math.atan2(boid.dy, boid.dx);
-//   ctx.translate(boid.x, boid.y);
-//   ctx.rotate(angle);
-
-//   ctx.fillStyle = "#558cf4";
-//   ctx.beginPath();
-//   // Draw a square centered at (0,0) after translate
-//   ctx.rect(-size / 2, -size / 2, size, size);
-//   ctx.fill();
-
-//   ctx.setTransform(1, 0, 0, 1, 0, 0);
-
-//   if (DRAW_TRAIL) {
-//     ctx.strokeStyle = "#558cf466";
-//     ctx.beginPath();
-//     ctx.moveTo(boid.history[0][0], boid.history[0][1]);
-//     for (const point of boid.history) {
-//       ctx.lineTo(point[0], point[1]);
-//     }
-//     ctx.stroke();
-//   }
-// }
-
 function drawBoid(ctx, boid) {
   const angle = Math.atan2(boid.dy, boid.dx);
   ctx.translate(boid.x, boid.y);
@@ -269,7 +277,7 @@ function drawBoid(ctx, boid) {
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-  if (DRAW_TRAIL) {
+  if (drawTail) {
     ctx.strokeStyle = tailColour;
     ctx.lineWidth = tailWidth;
     ctx.beginPath();
@@ -307,7 +315,7 @@ function exportBoidsToSVG(boids) {
     svgElem.appendChild(circle);
 
     // Draw the trail if enabled
-    if (DRAW_TRAIL && boid.history.length > 1) {
+    if (drawTail && boid.history.length > 1) {
       const polyline = document.createElementNS(xmlns, "polyline");
       const points = boid.history.map(p => `${p[0]},${p[1]}`).join(" ");
       polyline.setAttribute("points", points);
@@ -339,13 +347,14 @@ function animationLoop() {
 
   // Update each boid
   for (let boid of boids) {
+    const boidCache = boid;
     // Update the velocities according to each rule
     flyTowardsCenter(boid);
     avoidOthers(boid);
     matchVelocity(boid);
     limitSpeed(boid);
     if (constraintType == "shape") {
-      keepWithinShape(boid, ctx);
+      keepWithinShape(boid, ctx, boidCache);
 
     } else if (constraintType == "window") {
       keepWithinBounds(boid);
@@ -362,7 +371,7 @@ function animationLoop() {
 
 
     boid.history.push([boid.x, boid.y])
-    boid.history = boid.history.slice(-50);
+    boid.history = boid.history.slice(historyLength);
   }
 
   // Clear the canvas and redraw all the boids in their current positions
@@ -386,7 +395,14 @@ function animationLoop() {
   window.requestAnimationFrame(animationLoop);
 }
 
+
   document.addEventListener('click', function(event) {
+      // Check if click is inside the control panel
+    const panel = document.getElementById('controlPanel');
+    if (panel.contains(event.target)) {
+      return; // Ignore clicks inside the UI
+    }
+
     const x = event.clientX; // x coordinate of the mouse click
     const y = event.clientY; // y coordinate of the mouse click
     initBoids(x, y);
@@ -607,5 +623,10 @@ function exportMetaSVG(polygons) {
 }
 
 // Initial draw
-resizeCanvas();
+// resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
+
+
+
+
+
