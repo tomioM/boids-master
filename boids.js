@@ -2,6 +2,7 @@
 let width = 150;
 let height = 150;
 let isMetaballRender = false;
+let isRendering = true;
 let svgExportQueued = false;
 // const zoomScale = 1;
 const margin = 150;
@@ -24,22 +25,31 @@ let visualRange = 75;
 let centeringFactor = 0.005; // adjust velocity by this %
 let matchingFactor = 0.15; // Adjust by this % of average velocity
 let avoidFactor = 0.10; // Adjust velocity by this %
-let speedLimit = 10;
+let speedLimit = 5;
 
 
 // Metaball
 let gridSize = 5;
 let threshold = 15;
 
+const guideStrength = 1.8; // smaller = more gentle guidance
+const maxDistance = 200;     // how far outside the shape we guide from
 
 
-const historyLength = -5000;
+
+const historyLength = -100;
 const speedDamping = 0.98; // reduce speed to 50%
 
 
 var boids = [];
 let cols, rows, fieldValues;
 let path2D;
+
+document.addEventListener("keydown", function(event) {
+  if (event.key === "r" || event.key === "R") {
+    isRendering = !isRendering;
+  }
+});
 
 document.addEventListener("keydown", function(event) {
   if (event.key === "m" || event.key === "M") {
@@ -50,7 +60,6 @@ document.addEventListener("keydown", function(event) {
 // Listen for keypress 'S'
 document.addEventListener("keydown", (e) => {
   if (e.key.toLowerCase() === "s") {
-    console.log("djd")
     svgExportQueued = true;
   }
 });
@@ -140,7 +149,6 @@ function keepWithinShape(boid, ctx, boidCache) {
   const turnFactor = -1;
 
   if (!ctx.isPointInPath(path2D, boid.x, boid.y)) {
-    console.log(boidCache)
     // Bounce boid by reversing direction slightly
     boid.dx *= turnFactor;
     boid.dy *= turnFactor;
@@ -166,20 +174,54 @@ function keepWithinShape(boid, ctx, boidCache) {
       boid.dx = 0;
       boid.dy = 0;
     }
+  }
+}
 
+
+function nudgeToShape(boid, ctx, boidCache) {
+
+  if (!ctx.isPointInPath(path2D, boid.x, boid.y)) {
+    // Find a direction vector pointing back *toward* the shape
+    let closestPoint = findClosestPointInside(boid, ctx);
+
+    if (closestPoint) {
+      let dx = closestPoint.x - boid.x;
+      let dy = closestPoint.y - boid.y;
+      let dist = Math.hypot(dx, dy);
+
+      if (dist < maxDistance) {
+        // Normalize the direction vector and scale by guideStrength
+        dx = (dx / dist) * guideStrength;
+        dy = (dy / dist) * guideStrength;
+
+        boid.dx += dx;
+        boid.dy += dy;
+      }
+    }
+  }
+}
+
+function findClosestPointInside(boid, ctx) {
+  const radius = 30;
+  const samples = 36;
+  let closest = null;
+  let minDist = Infinity;
+
+  for (let i = 0; i < samples; i++) {
+    const angle = (i / samples) * 2 * Math.PI;
+    const sampleX = boid.x + radius * Math.cos(angle);
+    const sampleY = boid.y + radius * Math.sin(angle);
+
+    if (ctx.isPointInPath(path2D, sampleX, sampleY)) {
+      const dist = Math.hypot(sampleX - boid.x, sampleY - boid.y);
+      if (dist < minDist) {
+        minDist = dist;
+        closest = { x: sampleX, y: sampleY };
+      }
+    }
   }
 
-  // if (!ctx.isPointInPath(path2D, boid.x, boid.y)) {
-  //   // Bounce boid by reversing direction slightly
-  //   boid.dx *= turnFactor;
-  //   boid.dy *= turnFactor;
-
-  //       // Nudge back inside
-  //   boid.x += boid.dx;
-  //   boid.y += boid.dy;
-  // }
-
-
+  return closest;
 }
 
 // Find the center of mass of the other boids and adjust velocity slightly to
@@ -354,8 +396,8 @@ function animationLoop() {
     matchVelocity(boid);
     limitSpeed(boid);
     if (constraintType == "shape") {
-      keepWithinShape(boid, ctx, boidCache);
-
+      // keepWithinShape(boid, ctx, boidCache);
+      nudgeToShape(boid, ctx, boidCache);
     } else if (constraintType == "window") {
       keepWithinBounds(boid);
     }
@@ -376,19 +418,22 @@ function animationLoop() {
 
   // Clear the canvas and redraw all the boids in their current positions
   // const ctx = document.getElementById("boids").getContext("2d");
-  if (isMetaballRender) {
-    computeField(boids);
-    marchingSquares()
-  } else {
-    ctx.clearRect(0, 0, width, height);
-    if (svgExportQueued) {
-      exportBoidsToSVG(boids);
+  if (isRendering) {
+    if (isMetaballRender) {
+      computeField(boids);
+      marchingSquares()
     } else {
-      for (let boid of boids) {
-        drawBoid(ctx, boid);
+      ctx.clearRect(0, 0, width, height);
+      if (svgExportQueued) {
+        exportBoidsToSVG(boids);
+      } else {
+        for (let boid of boids) {
+          drawBoid(ctx, boid);
+        }
       }
     }
   }
+
 
 
   // Schedule the next frame
@@ -574,13 +619,11 @@ function marchingSquares() {
   ctx.fill("evenodd");
 
   if (svgExportQueued) {
-    console.log("calling method")
     exportMetaSVG(polygons)
   }
 }
 
 function exportMetaSVG(polygons) {
-  console.log("attempt export")
   svgExportQueued = false;
 
   const xmlns = "http://www.w3.org/2000/svg";
